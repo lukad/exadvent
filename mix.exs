@@ -22,7 +22,8 @@ defmodule Advent.MixProject do
   defp deps do
     [
       {:req, "~> 0.4.8"},
-      {:nx, "~> 0.6.4"}
+      {:nx, "~> 0.6.4"},
+      {:benchee, "~> 1.3"}
     ]
   end
 end

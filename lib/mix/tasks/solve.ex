@@ -18,6 +18,7 @@ defmodule Mix.Tasks.Solve do
   * `--part` - the part of the problem to solve (defaults to 1)
   * `--input` - the input to use (defaults to fetching the input)
   * `--submit` - submit the answer to the Advent of Code website (defaults to false)
+  * `--benchmark` - benchmark the solution (defaults to false)
   """
   @shortdoc "Solve the Advent of Code problems"
 
@@ -30,7 +31,8 @@ defmodule Mix.Tasks.Solve do
     day: :integer,
     part: :integer,
     input: :string,
-    submit: :boolean
+    submit: :boolean,
+    benchmark: :boolean
   ]
 
   @impl Mix.Task
@@ -38,8 +40,11 @@ defmodule Mix.Tasks.Solve do
     Mix.Task.run("app.start")
 
     case OptionParser.parse!(args, strict: @options) do
-      {opts, []} -> solve(opts)
-      {_opts, _args} -> Mix.Tasks.Help.run(["solve"])
+      {opts, []} ->
+        if Keyword.get(opts, :benchmark), do: benchmark(opts), else: solve(opts)
+
+      {_opts, _args} ->
+        Mix.Tasks.Help.run(["solve"])
     end
   end
 
@@ -56,12 +61,42 @@ defmodule Mix.Tasks.Solve do
     end
   end
 
-  defp solve(opts) do
+  defp solution_info(opts) do
     today = Date.utc_today()
     year = Keyword.get(opts, :year, today.year)
     day = Keyword.get(opts, :day, today.day)
     part = Keyword.get(opts, :part, 1)
 
+    %{
+      year: year,
+      day: day,
+      part: part
+    }
+  end
+
+  defp solution(%{year: year, day: day, part: part}) do
+    case Advent.Solution.solution(year, day) do
+      nil ->
+        Logger.error("No solution found for year #{year} day #{day}")
+        {:error, :no_solution}
+
+      solution ->
+        case part do
+          1 ->
+            {:ok, {solution, :part_one}}
+
+          2 ->
+            {:ok, {solution, :part_two}}
+
+          _ ->
+            Logger.error("Invalid part: #{part}")
+            {:error, :invalid_part}
+        end
+    end
+  end
+
+  defp solve(opts) do
+    %{year: year, day: day, part: part} = info = solution_info(opts)
     Logger.metadata(year: year, day: day, part: part)
 
     input =
@@ -70,30 +105,34 @@ defmodule Mix.Tasks.Solve do
         path -> File.read!(path)
       end
 
-    solution =
-      case Advent.Solution.solution(year, day) do
-        nil ->
-          Logger.error("No solution found for year #{year} day #{day}")
-          {:error, :no_solution}
-
-        solution ->
-          case part do
-            1 ->
-              {:ok, solution.part_one(input)}
-
-            2 ->
-              {:ok, solution.part_two(input)}
-
-            _ ->
-              Logger.error("Invalid part: #{part}")
-              {:error, :invalid_part}
-          end
-      end
-
-    case solution do
-      {:ok, answer} ->
+    case solution(info) do
+      {:ok, {mod, fun}} ->
+        answer = apply(mod, fun, [input])
         Logger.info("Answer: #{answer}")
         submit_answer(year, day, part, answer, opts)
+
+      {:error, reason} ->
+        Logger.error("Error solving: #{reason}")
+    end
+  end
+
+  defp benchmark(opts) do
+    %{year: year, day: day, part: part} = info = solution_info(opts)
+    Logger.metadata(year: year, day: day, part: part)
+
+    input =
+      case Keyword.get(opts, :input) do
+        nil -> fetch_input(year, day)
+        path -> File.read!(path)
+      end
+
+    case solution(info) do
+      {:ok, {mod, fun}} ->
+        Benchee.run(%{
+          "solution" => fn -> apply(mod, fun, [input]) end
+        })
+
+      # Logger.info("Answer: #{answer}")
 
       {:error, reason} ->
         Logger.error("Error solving: #{reason}")
