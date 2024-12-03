@@ -1,6 +1,7 @@
 defmodule Advent.Answer do
   require Logger
 
+  @spec submit(integer(), integer(), integer(), String.t()) :: :ok | {:error, atom() | String.t()}
   def submit(year, day, part, answer) do
     Logger.info("Submitting answer")
 
@@ -18,7 +19,7 @@ defmodule Advent.Answer do
 
     case response do
       %Req.Response{status: 200} ->
-        {:ok, "Answer submitted successfully"}
+        :ok
 
       %Req.Response{status: 400} ->
         {:error, :invalid_answer}
@@ -27,8 +28,7 @@ defmodule Advent.Answer do
         {:error, :rate_limited}
 
       _ ->
-        Logger.error("Error submitting answer: #{inspect(response)}")
-        {:error, :unexpected_response}
+        {:error, inspect(response)}
     end
   end
 

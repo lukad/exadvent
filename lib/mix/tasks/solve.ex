@@ -141,7 +141,13 @@ defmodule Mix.Tasks.Solve do
 
   defp submit_answer(year, day, part, answer, opts) do
     if Keyword.get(opts, :submit, false) do
-      Advent.Answer.submit(year, day, part, answer)
+      case Advent.Answer.submit(year, day, part, answer) do
+        :ok ->
+          Logger.info("Answer submitted successfully")
+
+        {:error, reason} ->
+          Logger.error("Error submitting answer: #{reason}")
+      end
     end
   end
 end
