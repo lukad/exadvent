@@ -26,10 +26,8 @@ defmodule Elixir.Advent.Solutions.Year2024.Day02 do
     safe =
       report
       |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.all?(fn [a, b] ->
-        diff = b - a
-        abs(diff) <= 3 && sign(diff) == sign
-      end)
+      |> Enum.map(fn [a, b] -> b - a end)
+      |> Enum.all?(&(abs(&1) <= 3 && sign(&1) == sign))
 
     cond do
       safe ->
